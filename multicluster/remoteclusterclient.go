@@ -19,11 +19,6 @@ package multicluster
 import (
 	"context"
 	"fmt"
-	"math/rand"
-	"net/url"
-	"strings"
-	"time"
-
 	"github.com/jellydator/ttlcache/v3"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -33,8 +28,12 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	"math/rand"
+	"net/url"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	"strings"
+	"time"
 )
 
 var _ client.Client = &remoteClusterClient{}
@@ -57,6 +56,16 @@ type remoteClusterClient struct {
 
 	restMappers *ttlcache.Cache[string, meta.RESTMapper]
 	restClients *ttlcache.Cache[schema.GroupVersionKind, rest.Interface]
+}
+
+func (in *remoteClusterClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (in *remoteClusterClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	//TODO implement me
+	panic("implement me")
 }
 
 // NewRemoteClusterClient create a client that will use separate RESTMappers for
@@ -98,8 +107,16 @@ func (in *remoteClusterClient) GetRESTMapper(cluster string) (meta.RESTMapper, e
 	item := in.restMappers.Get(cluster)
 	if item == nil {
 		copied := rest.CopyConfig(in.config)
+		configShallowCopy := *copied
+
+		if configShallowCopy.UserAgent == "" {
+			configShallowCopy.UserAgent = rest.DefaultKubernetesUserAgent()
+		}
+
+		// share the transport between all clients
+		httpClient, err := rest.HTTPClientFor(&configShallowCopy)
 		copied.Wrap(NewTransportWrapper(ForCluster(cluster)))
-		mapper, err := apiutil.NewDynamicRESTMapper(copied)
+		mapper, err := apiutil.NewDynamicRESTMapper(copied, httpClient)
 		if err != nil {
 			return nil, err
 		}
@@ -132,7 +149,16 @@ func (in *remoteClusterClient) GetRESTClient(gvk schema.GroupVersionKind) (rest.
 	}
 	item := in.restClients.Get(gvk)
 	if item == nil {
-		restClient, err := apiutil.RESTClientForGVK(gvk, true, in.config, in.codecs)
+		copied := rest.CopyConfig(in.config)
+		configShallowCopy := *copied
+
+		if configShallowCopy.UserAgent == "" {
+			configShallowCopy.UserAgent = rest.DefaultKubernetesUserAgent()
+		}
+
+		// share the transport between all clients
+		httpClient, err := rest.HTTPClientFor(&configShallowCopy)
+		restClient, err := apiutil.RESTClientForGVK(gvk, true, in.config, in.codecs, httpClient)
 		if err != nil {
 			return nil, err
 		}

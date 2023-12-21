@@ -39,7 +39,18 @@ var KubeConfig = NewSingleton[*rest.Config](func() *rest.Config {
 
 // RESTMapper .
 var RESTMapper = NewSingletonE[meta.RESTMapper](func() (meta.RESTMapper, error) {
-	return apiutil.NewDiscoveryRESTMapper(KubeConfig.Get())
+	configShallowCopy := *KubeConfig.Get()
+
+	if configShallowCopy.UserAgent == "" {
+		configShallowCopy.UserAgent = rest.DefaultKubernetesUserAgent()
+	}
+
+	// share the transport between all clients
+	httpClient, err := rest.HTTPClientFor(&configShallowCopy)
+	if err != nil {
+		return nil, err
+	}
+	return apiutil.NewDiscoveryRESTMapper(KubeConfig.Get(), httpClient)
 })
 
 // KubeClient .
