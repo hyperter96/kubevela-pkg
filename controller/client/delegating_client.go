@@ -42,6 +42,16 @@ type delegatingClient struct {
 	mapper meta.RESTMapper
 }
 
+func (d *delegatingClient) GroupVersionKindFor(obj runtime.Object) (schema.GroupVersionKind, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (d *delegatingClient) IsObjectNamespaced(obj runtime.Object) (bool, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 // Scheme returns the scheme this client is using.
 func (d *delegatingClient) Scheme() *runtime.Scheme {
 	return d.scheme

@@ -32,12 +32,12 @@ func BuildCache(scheme *runtime.Scheme, shardingObjects ...client.Object) cache.
 func BuildCacheWithOptions(opts cache.Options, shardingObjects ...client.Object) cache.NewCacheFunc {
 	if EnableSharding {
 		ls := labels.SelectorFromSet(map[string]string{LabelKubeVelaScheduledShardID: ShardID})
-		if opts.SelectorsByObject == nil {
-			opts.SelectorsByObject = map[client.Object]cache.ObjectSelector{}
+		if opts.ByObject == nil {
+			opts.ByObject = map[client.Object]cache.ByObject{}
 		}
 		for _, obj := range shardingObjects {
-			opts.SelectorsByObject[obj] = cache.ObjectSelector{Label: ls}
+			opts.ByObject[obj] = cache.ByObject{Label: ls}
 		}
 	}
-	return cache.BuilderWithOptions(opts)
+	return cache.New
 }
